@@ -1,0 +1,78 @@
+apiVersion: 1
+defs:
+  connector:
+    redis:
+      encoder: bson
+      # sentinels: sentinel
+      host: redis.default.svc.cluster.local
+      port: 6379
+      db: 0
+# service name
+name: lambda
+# service namesapce
+namespace: ignitialio
+# heartbeat
+heartbeatPeriod: 5000,
+# PUB/SUB/KV connector
+connector: "{{$.defs.connector}}"
+# access control: if present, acces control enabled
+accesscontrol:
+  # access control namespace
+  namespace: ignitialio
+  # grants for current service: auto-fill
+  grants:
+    admin:
+      'create:any':
+        - '*'
+      'read:any':
+        - '*'
+      'update:any':
+        - '*'
+      'delete:any':
+        - '*'
+    user:
+      'read:any':
+        - '*'
+      'update:any':
+        - '*'
+      'delete:any':
+        - '*'
+    anonymous:
+      'read:any':
+        - '*'
+  # connector configuration: optional, default same as global connector, but on DB 1
+  connector: "{{$.defs.connector}}"
+# HTTP server declaration
+server:
+  # server host
+  host: lambda.default.svc.cluster.local
+  # server port
+  port: 20499
+  # path to statically serve (at least one asset for icons for example)
+  path: ./dist
+  # indicates that service is behind an HTTPS proxy
+  https: false
+# options published through discovery mechanism
+publicOptions:
+  # declares component injection
+  uiComponentInjection: true
+  # service description
+  description:
+    # service icon
+    icon: assets/lambda-64.png
+    # Internationalization: see Ignitial.io Web App
+    i18n:
+      'My amazing component':
+        - 'Mon super composant'
+      'Provides uber crazy services':
+        - 'Fournit des services super hyper dingues'
+      'Insert here your own UI components':
+        - 'Insérer ici vos propres composants'
+      'Lambda Service view':
+        - 'Vue du service Lambda'
+    # eventually any other data
+    title: 'My amazing component'
+    info: 'Provides uber crazy services'
+  # domain related public options: could be any JSON object*/
+  myPublicOption:
+    anOption: 1

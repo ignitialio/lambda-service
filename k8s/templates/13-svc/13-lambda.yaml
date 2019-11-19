@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lambda
+  labels:
+    app: lambda
+spec:
+  replicas: "{{$.iios.app.replicas}}"
+  selector:
+    matchLabels:
+      app: lambda
+  template:
+    metadata:
+      labels:
+        app: lambda
+    spec:
+      containers:
+      - name: lambda
+        image: "ignitial/lambda:{{$.iios.app.version}}"
+        imagePullPolicy: "{{$.iios.app.imagePullPolicy}}"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /opt/lambda/server/config/generated
+        ports: "{{$.iios.app.ports}}"
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        - name: config-volume
+          configMap:
+            name: lambda-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lambda
+spec:
+  selector:
+    app: lambda
+  ports:
+  - name: http
+    port: "{{$.iios.app.ports[0].containerPort}}"
+    targetPort: "{{$.iios.app.ports[0].containerPort}}"
