@@ -65,7 +65,7 @@ export default {
         if (this.fct._id) {
           await fctsCollection.dUpdate({ _id: this.fct._id }, this.fct)
         } else {
-          let result = wait fctsCollection.dPut(this.fct)
+          let result = await fctsCollection.dPut(this.fct)
           this.fct._id = result._id
           this.$emit('update:data', this.fct)
         }
