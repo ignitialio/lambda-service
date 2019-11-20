@@ -20,7 +20,18 @@
         :disabled="!modified">
         <v-icon>save</v-icon>
       </v-btn>
+      <v-btn icon text color="blue darken-1" @click="handleNew">
+        <v-icon>add</v-icon>
+      </v-btn>
     </div>
+
+    <div class="fct-section">{{ $t('Test') }}</div>
+
+    <v-btn color="blue darken-1" @click="handleRun" :disable="running" dark>
+      <v-icon left>play_arrow</v-icon> {{ $t('Run') }}
+    </v-btn>
+
+    <v-textarea :label="$t('Result')" :value="result"></v-textarea>
   </div>
 </template>
 
@@ -41,14 +52,28 @@ export default {
         'Python 2.7'
       ],
       fct: null,
-      modified: false
+      modified: false,
+      running: false,
+      result: ''
     }
   },
   watch: {
+    data: {
+      handler: function(val) {
+        if (JSON.stringify(val) !== JSON.stringify(this.fct)) {
+          this.fct = cloneDeep(val)
+        }
+      },
+      deep: true
+    },
     fct: {
       handler: function(val) {
-        if (this.lastFct && this.lastFct !== JSON.stringify(this.fct)) {
-          this.modified = true
+        if (this.lastFct && this.lastFct !== JSON.stringify(val)) {
+          if (JSON.stringify(this.data) !== JSON.stringify(val)) {
+            this.modified = true
+          }
+
+          this.lastFct = JSON.stringify(val)
         }
       },
       deep: true
@@ -58,6 +83,16 @@ export default {
 
   },
   methods: {
+    handleNew() {
+      this.fct = {
+        name: 'lambda_fct_' + Math.random().toString(36).slice(2),
+        description: '',
+        runtime: 'NodeJS 12',
+        code: this.codeTempalte
+      }
+
+      this.$emit('update:data', this.fct)
+    },
     async handleSave() {
       try {
         let fctsCollection = await this.$db.collection('lambdafcts')
@@ -69,10 +104,19 @@ export default {
           this.fct._id = result._id
           this.$emit('update:data', this.fct)
         }
+
+        this.$services.emit('app:notification', this.$t('Modification done'))
       } catch (err) {
         console.log(err)
-        this.$services.emit('app:notification', this.$t('Modificaiton failed'))
+        this.$services.emit('app:notification', this.$t('Modification failed'))
       }
+    },
+    handleRun() {
+      this.$services.lambda.run(this.fct).then(result => {
+        this.result = result
+      }).catch(err => {
+        this.result = err
+      })
     },
     updateCss() {
       if (this.$refs.editor) {
@@ -91,11 +135,12 @@ export default {
     }
   },
   mounted() {
-    this.fct = _.cloneDeep(this.data)
+    this.fct = cloneDeep(this.data)
     this.lastFct = JSON.stringify(this.fct)
 
     if (!this.fct.code) {
       this.$services.lambda.template().then(code => {
+        this.codeTempalte = code
         this.fct.code = code
         this.$emit('update:data', this.fct)
       }).catch(err => console.log(err))
@@ -104,7 +149,8 @@ export default {
     // vuetify issue with code tag
     setTimeout(() => {
       this.updateCss()
-    }, 200)
+      this.modified = false
+    }, 1000)
   },
   beforeDestroy() {
 

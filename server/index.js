@@ -59,16 +59,13 @@ class Lambda extends Gateway {
 
   // executes an user function providing its source code
   // ***************************************************************************
-  run(fctSrc) {
+  run(fctInfo) {
     /* @_POST_ */
-    return new Promise((resolve, reject) => {
-      if (typeof fctSrc === 'object') {
-
-      } else if (typeof fctSrc === 'string') {
-
-      }
-      resolve()
-    })
+    let filepath = path.join(__dirname, './user', fctInfo.name + '.js')
+    fs.writeFileSync(filepath, fctInfo.code, 'utf8')
+    let fct = require(filepath)
+    // fct must be a Promise
+    return fct()
   }
 
   // executes an user function providing its source code

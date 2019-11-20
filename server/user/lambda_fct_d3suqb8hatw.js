@@ -5,6 +5,6 @@
 */
 module.exports = function(event, context) {
   return new Promise((resolve, reject) => {
-    resolve()
+    resolve(300)
   })
 }

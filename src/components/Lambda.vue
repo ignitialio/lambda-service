@@ -1,28 +1,22 @@
 <template>
   <div :id="id" v-if="!hidden" class="lambda-layout">
-    <v-progress-linear v-if="loading"
-      indeterminate class="lambda-progress-bar"></v-progress-linear>
-
     <div class="lambda-left">
+      <v-progress-linear v-if="loading"
+        indeterminate class="lambda-progress-bar"></v-progress-linear>
+
       <v-list>
-        <v-list-item v-for="(item, index) in items" :key="index"
-          @click.stop="handleSelect(item)"
-          @dblclick.stop="handleSelect(item, 'dblclick')"
-          :class="{ 'selected': selected === item }">
-          <v-list-item-avatar>
-            <v-img :src="item.icon ?
-              $utils.fileUrl(item.icon) : computeIcon(item)" alt=""></v-img>
-          </v-list-item-avatar>
+        <v-list-item v-for="fct in fcts" :key="fct.name"
+          @click="handleSelected(fct)"
+          class="lambda-item"
+          :class="{ 'selected': selected === fct }">
 
           <v-list-item-content>
-            <v-list-item-title
-              v-text="computeTitle(item)">
-            </v-list-item-title>
-            <v-list-item-subtitle v-text="item._id + ''"></v-list-item-subtitle>
+            <v-list-item-title v-text="fct.name"></v-list-item-title>
+            <v-list-item-subtitle v-text="fct.description"></v-list-item-subtitle>
           </v-list-item-content>
 
           <v-list-item-action>
-            <v-btn icon @click.stop="handleDelete(item)">
+            <v-btn icon @click.stop="handleDelete(fct)">
               <v-icon color='red darken-1'>clear</v-icon>
             </v-btn>
           </v-list-item-action>
@@ -44,6 +38,7 @@ export default {
       id: 'lambda_' + Math.random().toString(36).slice(2),
       fcts: [],
       hidden: false,
+      loading: false,
       selected: {
         name: 'lambda_fct_' + Math.random().toString(36).slice(2),
         description: '',
@@ -56,8 +51,39 @@ export default {
     fct: Fct
   },
   methods: {
-    handleCollectionUpdate() {
-
+    update() {
+      this.loading = true
+      this.$db.collection('lambdafcts').then(lambdafcts => {
+        lambdafcts.dFind({}).then(docs => {
+          this.fcts = docs
+          this.loading = false
+        }).catch(err => {
+          console.log(err)
+          this.loading = true
+        })
+      }).catch(err => {
+        console.log(err)
+        this.loading = true
+      })
+    },
+    handleCollectionUpdate(event) {
+      console.log(event)
+      this.update()
+    },
+    handleSelected(fct) {
+      this.selected = fct
+    },
+    handleDelete(fct) {
+      this.$db.collection('lambdafcts').then(lambdafcts => {
+        lambdafcts.dDelete({ _id: fct._id }).then(result => {
+          this.update()
+        }).catch(err => {
+          console.log(err)
+          this.$services.emit('app:notification', this.$t('Modification failed'))
+        })
+      }).catch(err => {
+        this.$services.emit('app:notification', this.$t('Modification failed'))
+      })
     }
   },
   mounted() {
@@ -74,12 +100,16 @@ export default {
       onCollectionUpdate: this.handleCollectionUpdate.bind(this)
     }
 
-    this.$services.on('dlake:lambdafcts:add', this._listeners.onCollectionUpdate)
-    this.$services.on('dlake:lambdafcts:update', this._listeners.onCollectionUpdate)
-    this.$services.on('dlake:lambdafcts:delete', this._listeners.onCollectionUpdate)
+    this.$ws.socket.on('service:event:dlake:lambdafcts:add', this._listeners.onCollectionUpdate)
+    this.$ws.socket.on('service:event:dlake:lambdafcts:update', this._listeners.onCollectionUpdate)
+    this.$ws.socket.on('service:event:dlake:lambdafcts:delete', this._listeners.onCollectionUpdate)
+
+    this.update()
   },
   beforeDestroy() {
-    this.$services.off('', this._listeners.onCollectionUpdate)
+    this.$ws.socket.off('service:event:dlake:lambdafcts:add', this._listeners.onCollectionUpdate)
+    this.$ws.socket.off('service:event:dlake:lambdafcts:update', this._listeners.onCollectionUpdate)
+    this.$ws.socket.off('service:event:dlake:lambdafcts:delete', this._listeners.onCollectionUpdate)
   }
 }
 </script>
@@ -108,5 +138,9 @@ export default {
   height: calc(100% - 0px);
   padding-bottom: 8px;
   margin: 0 8px;
+}
+
+.lambda-item.selected {
+  background-color: rgba(30, 144, 255, 0.2);
 }
 </style>

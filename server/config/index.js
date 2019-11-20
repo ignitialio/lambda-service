@@ -139,6 +139,9 @@ module.exports = {
         ],
         'Source code': [
           'Code source'
+        ],
+        'Result': [
+          'Résultat'
         ]
       },
       /* eventually any other data */
