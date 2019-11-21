@@ -15,23 +15,17 @@
     <prism-editor ref="editor" lineNumbers class="fct-editor"
       :code="fct.code" @change="handleChange" language="js"></prism-editor>
 
-    <div class="fct-menu">
-      <v-btn icon text color="blue darken-1" @click="handleSave"
-        :disabled="!modified">
-        <v-icon>save</v-icon>
-      </v-btn>
-      <v-btn icon text color="blue darken-1" @click="handleNew">
-        <v-icon>add</v-icon>
+    <div class="fct-section">
+      {{ $t('Test') }}
+      <v-btn color="blue darken-1" icon text
+        @click="handleRun" :disable="running" dark>
+        <v-icon>play_arrow</v-icon>
       </v-btn>
     </div>
 
-    <div class="fct-section">{{ $t('Test') }}</div>
-
-    <v-btn color="blue darken-1" @click="handleRun" :disable="running" dark>
-      <v-icon left>play_arrow</v-icon> {{ $t('Run') }}
-    </v-btn>
-
-    <v-textarea :label="$t('Result')" :value="result"></v-textarea>
+    <v-textarea style="margin-top: 16px"
+      :label="$t('Result')" :value="result"
+      readonly outlined rows="6"></v-textarea>
   </div>
 </template>
 
@@ -77,6 +71,9 @@ export default {
         }
       },
       deep: true
+    },
+    modified: function(val) {
+      this.$services.emit('view:lambda:modified', val)
     }
   },
   computed: {
@@ -84,14 +81,26 @@ export default {
   },
   methods: {
     handleNew() {
-      this.fct = {
-        name: 'lambda_fct_' + Math.random().toString(36).slice(2),
-        description: '',
-        runtime: 'NodeJS 12',
-        code: this.codeTempalte
-      }
+      this.$services.lambda.template().then(code => {
+        this.codeTempalte = code
 
-      this.$emit('update:data', this.fct)
+        this.fct = {
+          name: 'lambda_fct_' + Math.random().toString(36).slice(2),
+          description: '',
+          runtime: 'NodeJS 12',
+          code: this.codeTempalte
+        }
+
+        this.lastFct = JSON.stringify(this.fct)
+
+        this.$emit('update:data', this.fct)
+
+        // vuetify issue with code tag
+        setTimeout(() => {
+          this.updateCss()
+          this.modified = false
+        }, 1000)
+      }).catch(err => console.log(err))
     },
     async handleSave() {
       try {
@@ -135,25 +144,36 @@ export default {
     }
   },
   mounted() {
-    this.fct = cloneDeep(this.data)
-    this.lastFct = JSON.stringify(this.fct)
-
-    if (!this.fct.code) {
-      this.$services.lambda.template().then(code => {
-        this.codeTempalte = code
-        this.fct.code = code
-        this.$emit('update:data', this.fct)
-      }).catch(err => console.log(err))
+    this._listeners = {
+      onSave: this.handleSave.bind(this),
+      onNew: this.handleNew.bind(this)
     }
 
-    // vuetify issue with code tag
-    setTimeout(() => {
-      this.updateCss()
-      this.modified = false
-    }, 1000)
+    this.$services.on('view:lambda:new', this._listeners.onNew)
+    this.$services.on('view:lambda:save', this._listeners.onSave)
+
+    if (this.data.name) {
+      this.fct = cloneDeep(this.data)
+      this.lastFct = JSON.stringify(this.fct)
+
+      // vuetify issue with code tag
+      setTimeout(() => {
+        this.updateCss()
+        this.modified = false
+      }, 1000)
+    } else {
+      this.handleNew()
+    }
+
+    // show contextual menu bar
+    this.$services.emit('app:context:bar', 'lambda-ctx')
   },
   beforeDestroy() {
+    this.$services.off('view:lambda:new', this._listeners.onNew)
+    this.$services.off('view:lambda:save', this._listeners.onSave)
 
+    // show contextual menu bar
+    this.$services.emit('app:context:bar', null)
   }
 }
 </script>
@@ -162,7 +182,7 @@ export default {
 .fct-layout {
   width: 100%;
   height: calc(100% - 0px);
-  position: relative;
+  overflow-y: auto;
 }
 
 .fct-editor {
@@ -177,11 +197,5 @@ export default {
   padding-top: 16px;
   width: 100%;
   color: dodgerblue;
-}
-
-.fct-menu {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
 }
 </style>

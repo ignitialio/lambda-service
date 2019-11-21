@@ -39,12 +39,7 @@ export default {
       fcts: [],
       hidden: false,
       loading: false,
-      selected: {
-        name: 'lambda_fct_' + Math.random().toString(36).slice(2),
-        description: '',
-        runtime: 'NodeJS 12',
-        code: ''
-      }
+      selected: {}
     }
   },
   components: {
@@ -131,13 +126,13 @@ export default {
   width: calc(33% - 16px);
   margin: 0 8px;
   border-right: 1px solid gainsboro;
+  overflow-y: auto;
 }
 
 .lambda-right {
   width: calc(67% - 16px);
   height: calc(100% - 0px);
-  padding-bottom: 8px;
-  margin: 0 8px;
+  padding: 8px;
 }
 
 .lambda-item.selected {

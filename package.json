@@ -12,7 +12,9 @@
     "streaming",
     "data pipes",
     "micro-service",
-    "access control"
+    "access control",
+    "lambda",
+    "aws lambda"
   ],
   "license": "MIT",
   "watch": {

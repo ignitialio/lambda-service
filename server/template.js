@@ -1,5 +1,5 @@
 /*
-  User function
+  User function: must return a Promise
   @param {object} event: trig event data
   @param {object} context: function context provided by services gateway
 */

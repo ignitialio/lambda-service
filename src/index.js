@@ -1,9 +1,12 @@
 import Lambda from './components/Lambda.vue'
+import LambdaContext from './components/context/LambdaContext.vue'
 
 // function to be called when service loaded into web app:
 // naming rule: iios_<service_unique_name>
 //
 global.iios_lambda = function(Vue) {
+  //
+  Vue.component('lambda-ctx', LambdaContext)
   // Warning: component name must be globally unique in your host app
   Vue.component('lambda', Lambda)
 

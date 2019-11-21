@@ -142,6 +142,9 @@ module.exports = {
         ],
         'Result': [
           'Résultat'
+        ],
+        'Name': [
+          'Nom'
         ]
       },
       /* eventually any other data */
