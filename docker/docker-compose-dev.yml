@@ -60,7 +60,6 @@ services:
     ports:
       - ${IIOS_DOCKER_EXPORTED_PORTS}
     environment:
-      - DEBUG=connect:*
       - IIOS_REDIS_HOST=redis
       - IIOS_NAMESPACE=${IIOS_NAMESPACE}
       - IIOS_SERVER_HOST=${IIOS_SERVER_HOST}

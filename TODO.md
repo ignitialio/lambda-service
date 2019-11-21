@@ -1,0 +1,1 @@
+- service name given by configuration even client side for remote calls

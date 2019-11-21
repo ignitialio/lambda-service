@@ -10,6 +10,21 @@
       style="max-width: 200px;"
       :items="runtimes" v-model="fct.runtime"></v-select>
 
+    <div class="fct-section">{{ $t('Dependencies') }}
+      <v-btn color="blue darken-1" icon text
+        @click="handleApplyDeps" :disabled="!hasDeps(fct)" dark>
+        <v-icon>play_for_work</v-icon>
+      </div>
+
+    <div class="fct-dependencies">
+      <div class="fct-lib" v-for="dep of fct.dependencies" :key="dep.name">
+        <span style="margin-right: 32px;">
+          {{ dep.name + ( dep.version ? '@' + dep.version : '') }}</span>
+        <v-icon class="fct-lib--status" v-show="!isInstalled(dep.name)" color="grey">error</v-icon>
+        <v-icon class="fct-lib--status" v-show="isInstalled(dep.name)" color="green lighten-1">done</v-icon>
+      </div>
+    </div>
+
     <div class="fct-section">{{ $t('Source code') }}*</div>
 
     <prism-editor ref="editor" lineNumbers class="fct-editor"
@@ -88,7 +103,9 @@ export default {
           name: 'lambda_fct_' + Math.random().toString(36).slice(2),
           description: '',
           runtime: 'NodeJS 12',
-          code: this.codeTempalte
+          code: this.codeTempalte,
+          archive: null,
+          dependencies: []
         }
 
         this.lastFct = JSON.stringify(this.fct)
@@ -114,6 +131,7 @@ export default {
           this.$emit('update:data', this.fct)
         }
 
+        this.modified = false
         this.$services.emit('app:notification', this.$t('Modification done'))
       } catch (err) {
         console.log(err)
@@ -121,10 +139,22 @@ export default {
       }
     },
     handleRun() {
+      this.running = true
       this.$services.lambda.run(this.fct).then(result => {
         this.result = result
+        this.running = false
       }).catch(err => {
         this.result = err
+        this.running = false
+      })
+    },
+    handleApplyDeps() {
+      this.$services.lambda.installDependencies(this.fct).then(result => {
+        this._installedDeps = result
+        this.$forceUpdate()
+      }).catch(err => {
+        this.$services.emit('app:notification', this.$t('Failed to install dependencies'))
+        console.log(err)
       })
     },
     updateCss() {
@@ -135,15 +165,52 @@ export default {
     },
     handleChange(val) {
       this.fct.code = val
-      this.$emit('update:data', this.fct)
 
       // vuetify issue with code tag
       setTimeout(() => {
         this.updateCss()
       }, 200)
+
+      switch (this.fct.runtime) {
+        case 'NodeJS 12':
+          if (!this.fct.archive) {
+            let dependencies = this.fct.code.match(/require\('(.*?)'\)/g)
+            if (dependencies) {
+              this.fct.dependencies = []
+              for (let lib of dependencies) {
+                lib = lib.match(/require\('(.*?)'\)/)[1]
+                this.fct.dependencies.push({
+                  name: lib,
+                  version: undefined
+                })
+              }
+            }
+          }
+          break
+      }
+
+      this.$emit('update:data', this.fct)
+    },
+    isInstalled(depName) {
+      let found
+      for (let dep of this._installedDeps) {
+        if (dep.name === depName) return true
+      }
+
+      return false
+    },
+    hasDeps(fct) {
+      if (fct.dependencies && fct.dependencies.length) {
+        return true
+      }
+      return false
     }
   },
   mounted() {
+    this.$services.lambda.installedDependencies().then(result => {
+      this._installedDeps = result
+    }).catch(err => console.log(err))
+
     this._listeners = {
       onSave: this.handleSave.bind(this),
       onNew: this.handleNew.bind(this)
@@ -196,6 +263,32 @@ export default {
   margin: 16px 0;
   padding-top: 16px;
   width: 100%;
-  color: dodgerblue;
+  color: dimgray;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+
+.fct-dependencies {
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 48px;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.fct-lib {
+  background-color: navajowhite;
+  border-radius: 12px;
+  height: 24px;
+  padding: 0 12px;
+  margin: 0 4px;
+  position: relative;
+}
+
+.fct-lib--status {
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 </style>

@@ -52,6 +52,8 @@
   },
   "dependencies": {
     "@ignitial/iio-services": "^2.2.8",
+    "live-plugin-manager": "^0.13.2",
+    "lodash": "^4.17.15",
     "yaml": "^1.7.2"
   },
   "devDependencies": {

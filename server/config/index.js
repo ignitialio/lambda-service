@@ -117,6 +117,10 @@ module.exports = {
     /* indicates that service is behind an HTTPS proxy */
     https: false,
   },
+  /* service related libraries */
+  dependencies: {
+    path: 'config/dependencies.json'
+  },
   /* options published through discovery mechanism */
   publicOptions: {
     /* declares component injection */
@@ -145,6 +149,12 @@ module.exports = {
         ],
         'Name': [
           'Nom'
+        ],
+        'Dependencies': [
+          'Dépendances'
+        ],
+        'Failed to install dependencies': [
+          'Echec de l\'installation des dépendances'
         ]
       },
       /* eventually any other data */
