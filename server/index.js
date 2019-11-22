@@ -2,7 +2,10 @@ const Gateway = require('@ignitial/iio-services').Gateway
 const config = require('./config')
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
 const _ = require('lodash')
+const tar = require('tar')
+const rimraf = require('rimraf')
 const PluginManager = require('live-plugin-manager').PluginManager
 
 class Lambda extends Gateway {
@@ -25,7 +28,7 @@ class Lambda extends Gateway {
       try {
         await dataService.addDatum('lambdafcts', {
           grants: {
-            __privileged__: {
+            $privileged: {
               'dlake:lambdafcts': {
                 'create:any': [ '*' ],
                 'read:any': [ '*' ],
@@ -114,7 +117,80 @@ class Lambda extends Gateway {
     })
   }
 
-  // install given dependency for a given runtime
+  // builds fct related Docker image for stateless implementation
+  // ***************************************************************************
+  build(fct) {
+    /* @_POST_ */
+    return new Promise(async (resolve, reject) => {
+      try {
+        let docker = await this. _waitForServiceAPI('docker')
+        let basepath = path.join(os.homedir(), 'lambda')
+
+        if (!fs.existsSync(basepath)) {
+          fs.mkdirSync(basepath)
+        }
+
+        if (!fs.existsSync(path.join(basepath, 'src'))) {
+          fs.mkdirSync(path.join(basepath, 'src'))
+        }
+
+        if (!fct.archive) {
+          let filepath = path.join(basepath, 'src', fct.name + '.js')
+          fs.writeFileSync(filepath, fct.code, 'utf8')
+        }
+
+        let dockerfileTemplatePath = path.join(__dirname, './data', 'Dockerfile.template')
+        let dockerfile = fs.readFileSync(dockerfileTemplatePath, 'utf8')
+
+        if (fct.dependencies && fct.dependencies.length > 0) {
+          let deps = _.map(fct.dependencies, e => e.name)
+          dockerfile = dockerfile.replace(/_DEPENDENCIES_/, deps.join(' '))
+        } else {
+          dockerfile = dockerfile.replace('npm install _DEPENDENCIES_', '')
+        }
+
+        let dockerfilePath = path.join(basepath, 'src', 'Dockerfile')
+        fs.writeFileSync(dockerfilePath, dockerfile, 'utf8')
+
+        let archivePath = path.join(basepath, fct.name + '.tar')
+
+        let files = fs.readdirSync(path.join(basepath, 'src'))
+
+        // files = _.map(files, e => path.join(path.join(basepath, 'src'), e))
+
+        await tar.c({
+          C: path.join(path.join(basepath, 'src')),
+          /*gzip: true,*/
+          file: archivePath
+        }, files)
+
+        let archiveBuf = fs.readFileSync(archivePath)
+        // taking in account current registry managed by docker service
+        let imageName = await docker.buildFromRawDataArchive({
+          data: archiveBuf.toString('binary'),
+          name: fct.name,
+          folder: path.join(basepath, 'src')
+        }, {
+          $userId: null,
+          $privileged: true
+        })
+
+        // pushing to related registry
+        await docker.pushImageByName(imageName, {
+          $userId: null,
+          $privileged: true
+        })
+
+        rimraf.sync(basepath)
+
+        resolve(imageName)
+      } catch (err) {
+        reject(err)
+      }
+    })
+  }
+
+  // (private) install given dependency for a given runtime
   // ***************************************************************************
   _installDependency(runtime, libName, libVersion) {
     console.log(runtime, libName, libVersion)

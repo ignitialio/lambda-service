@@ -10,11 +10,25 @@
       style="max-width: 200px;"
       :items="runtimes" v-model="fct.runtime"></v-select>
 
-    <div class="fct-section">{{ $t('Dependencies') }}
+
+    <div class="fct-section">
+      {{ $t('Docker image') }}
+      <v-btn color="blue darken-1" icon text
+        @click="handleBuildImage" dark>
+        <v-icon>build</v-icon>
+      </v-btn>
+    </div>
+
+    <div v-if="fct.imageName">{{ fct.imageName }}</div>
+    <div v-else>{{ $t('No associated image available') }}</div>
+
+    <div class="fct-section">
+      {{ $t('Dependencies') }}
       <v-btn color="blue darken-1" icon text
         @click="handleApplyDeps" :disabled="!hasDeps(fct)" dark>
         <v-icon>play_for_work</v-icon>
-      </div>
+      </v-btn>
+    </div>
 
     <div class="fct-dependencies">
       <div class="fct-lib" v-for="dep of fct.dependencies" :key="dep.name">
@@ -63,6 +77,7 @@ export default {
       fct: null,
       modified: false,
       running: false,
+      building: false,
       result: ''
     }
   },
@@ -146,6 +161,17 @@ export default {
       }).catch(err => {
         this.result = err
         this.running = false
+      })
+    },
+    handleBuildImage() {
+      this.building = true
+
+      this.$services.lambda.build(this.fct).then(() => {
+        this.building = false
+      }).catch(err => {
+        this.$services.emit('app:notification', this.$t('Failed to build image'))
+        this.building = false
+        console.log(err)
       })
     },
     handleApplyDeps() {

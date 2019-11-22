@@ -153,8 +153,14 @@ module.exports = {
         'Dependencies': [
           'Dépendances'
         ],
-        'Failed to install dependencies': [
-          'Echec de l\'installation des dépendances'
+        'Failed to build image': [
+          'Échec de la construction de l\'image'
+        ],
+        'No associated image available': [
+          'Pas d\'image associée disponible'
+        ],
+        'Docker image': [
+          'Image docker'
         ]
       },
       /* eventually any other data */
