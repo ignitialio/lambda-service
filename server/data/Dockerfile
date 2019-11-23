@@ -2,4 +2,4 @@ FROM ignitial/jshelper
 
 ADD . /opt/jshelper/server/user
 
-npm install _DEPENDENCIES_
+RUN npm install _DEPENDENCIES_
