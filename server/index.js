@@ -67,6 +67,14 @@ class Lambda extends Gateway {
   run(fct) {
     /* @_POST_ */
     return new Promise(async (resolve, reject) => {
+      // fake answer to manage timeouts: response replaced with events
+      resolve({
+        _events: {
+          done: 'service:event:lambda:run:done',
+          err: 'service:event:lambda:run:error'
+        }
+      })
+
       try {
         switch (this._options.orchestrator) {
           case 'Docker Swarm':
@@ -76,24 +84,69 @@ class Lambda extends Gateway {
           case 'Docker':
           default:
             let docker = await this. _waitForServiceAPI('docker')
+
             docker.runService(fct.imageName, {
+              Env: [
+                'IIOS_SERVICE_NAME=' + fct.name.toLowerCase(),
+                'IIOS_SERVER_HOST=' + fct.name.toLowerCase(),
+                'IIOS_SERVER_PORT=20099',
+                'IIOS_NAMESPACE=' + this._options.namespace,
+                'IIOS_REDIS_HOST=' + this._options.connector.redis.host,
+                'IIOS_REDIS_PORT=' + this._options.connector.redis.port
+              ],
+              HostConfig: {
+                /* to be implemented as service configuration */
+                NetworkMode: 'infra'
+              }
+            }, {
               $userId: null,
               $privileged: true
-            }).then(containerId => {
-              console.log(containerId)
+            }).then(async containerId => {
               fct.running = {
                 container: containerId,
-                status: 'running'
+                status: 'started'
               }
 
-              resolve(fct)
+              let fctService = await this._waitForServiceAPI(fct.name.toLowerCase(), 10000)
+              fctService.fct({
+                $userId: null,
+                $privileged: true
+              }).then(async result => {
+                fct.running = {
+                  container: containerId,
+                  status: 'ended'
+                }
+
+                await docker.stopContainer(containerId, true, {
+                  $userId: null,
+                  $privileged: true
+                }) // remove as well
+
+                fct.running = null
+
+                this._pushEvent(this._options.name + ':run:done', {
+                  result: result,
+                  fct: fct
+                })
+              }).catch(async err => {
+                await docker.stopContainer(containerId, true, {
+                  $userId: null,
+                  $privileged: true
+                }) // remove as well
+
+                fct.running = null
+
+                console.log(err)
+                this._pushEvent(this._options.name + ':run:error', '' + err)
+              })
             }).catch(err => {
-              reject(err)
+              console.log(err)
+              this._pushEvent(this._options.name + ':run:error', '' + err)
             })
         }
       } catch (err) {
         console.log(err)
-        reject(err)
+        this._pushEvent(this._options.name + ':run:error', '' + err)
       }
     })
   }
@@ -173,8 +226,9 @@ class Lambda extends Gateway {
           file: archivePath
         }, files)
 
-        let archiveBuf = fs.readFileSync(archivePath)
-        let url = 'http://' + this._options.server.host + ':' +
+        let url = 'http://' +
+          (process.env.IIOS_SERVER_HOST_TEST ?
+            process.env.IIOS_SERVER_HOST_TEST : this._options.server.host) + ':' +
           this._options.server.port + '/build/' + filename
 
         docker.buildFromRemote({
@@ -226,8 +280,6 @@ class Lambda extends Gateway {
       // taking in account current configured registry
       let imageName = this._options.docker.registry + '/' +
         fct.name.toLowerCase() + (fct.version ? ':' + fct.version : '')
-
-      console.log(fct, imageName)
 
       docker.isImageAvailable(imageName, {
         $userId: null,

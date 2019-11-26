@@ -19,10 +19,10 @@
     </div>
 
     <div v-if="fct.imageName">{{ fct.imageName }}</div>
-    <div v-else-if="building" style="text-align: center;">
+    <div v-if="building" style="text-align: center;">
       <v-progress-circular color="blue lighten-1" indeterminate></v-progress-circular>
     </div>
-    <div v-else>{{ $t('No associated image available') }}</div>
+    <div v-if="!fct.imageName">{{ $t('No associated image available') }}</div>
 
     <div class="fct-section">{{ $t('Source code') }}*</div>
 
@@ -35,6 +35,9 @@
         @click="handleRun" :disable="running" dark>
         <v-icon>play_arrow</v-icon>
       </v-btn>
+
+      <v-progress-circular v-if="running"
+        color="blue lighten-1" indeterminate></v-progress-circular>
     </div>
 
     <v-textarea style="margin-top: 16px" :disabled="!fct.imageName"
@@ -143,13 +146,32 @@ export default {
     },
     handleRun() {
       this.running = true
-      this.$services.lambda.run(this.fct).then(result => {
-        this.result = result
-        this.running = false
-      }).catch(err => {
-        this.result = err
-        this.running = false
-      })
+      if (this.fct.imageName) {
+        this.$services.lambda.run(this.fct).then(() => {
+          let onDone = done => {
+            this.running = false
+            this.result = done.result
+            this.fct = done.fct
+
+            this.$ws.socket.off('service:event:lambda:run:error', onError)
+          }
+
+          let onError = err => {
+            this.running = false
+            console.log('run service ERROR', err)
+            this.$ws.socket.off('service:event:lambda:run:done', onDone)
+          }
+
+          this.$ws.socket.once('service:event:lambda:run:done', onDone)
+          this.$ws.socket.once('service:event:lambda:run:error', onError)
+        }).catch(err => {
+          this.running = false
+          this.$services.emit('app:notification', this.$t('Failed to run function'))
+          console.log(err)
+        })
+      } else {
+        console.log('image missing')
+      }
     },
     handleBuildImage() {
       this.building = true

@@ -165,6 +165,9 @@ module.exports = {
         ],
         'Docker image': [
           'Image docker'
+        ],
+        'Failed to run function': [
+          'Échec de l\'exécution de l\'image'
         ]
       },
       /* eventually any other data */

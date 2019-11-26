@@ -73,6 +73,7 @@ services:
     ports:
       - ${IIOS_LAMBDA_EXPORTED_PORTS}
     environment:
+      - IIOS_SERVER_HOST_TEST=${IIOS_SERVER_HOST_TEST}
       - IIOS_DOCKER_REGISTRY=localhost:5001
       - IIOS_REDIS_HOST=redis
       - IIOS_NAMESPACE=${IIOS_NAMESPACE}
