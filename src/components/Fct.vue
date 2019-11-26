@@ -72,6 +72,8 @@ export default {
         this.building = false
         if (JSON.stringify(val) !== JSON.stringify(this.fct)) {
           this.fct = cloneDeep(val)
+
+          this.updateImageStatus()
         }
       },
       deep: true
@@ -207,6 +209,20 @@ export default {
       }
 
       this.$emit('update:data', this.fct)
+    },
+    updateImageStatus() {
+      if (this.fct) {
+        this.$services.waitForService('lambda').then(lambda => {
+          lambda.isImageAvailable(this.fct).then(imageName => {
+            this.fct.imageName = imageName
+            this.$forceUpdate()
+            console.log('image', imageName)
+          }).catch(err => {
+            console.log('error', err)
+            this.fct.imageName = null
+          })
+        })
+      }
     }
   },
   mounted() {
@@ -221,6 +237,8 @@ export default {
     if (this.data.name) {
       this.fct = cloneDeep(this.data)
       this.lastFct = JSON.stringify(this.fct)
+
+      this.updateImageStatus()
 
       // vuetify issue with code tag
       setTimeout(() => {

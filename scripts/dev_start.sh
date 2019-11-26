@@ -24,7 +24,7 @@ echo "app version: ${SVC_VERSION}"
 
 # export IIOS_SERVER_HOST=lambda
 # using local docker, so...
-export IIOS_SERVER_HOST=0.0.0.0
+export IIOS_SERVER_HOST=lambda
 export IIOS_SERVER_PORT=20399
 export IIOS_LAMBDA_EXPORTED_PORTS=$IIOS_SERVER_PORT:$IIOS_SERVER_PORT
 export IIOS_DOCKER_SERVER_PORT=20513

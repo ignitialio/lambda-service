@@ -106,6 +106,8 @@ module.exports = {
       }
     }
   },
+  /* orchestrator: Docker, Docker Swarm, Kubernetes */
+  orchestrator: 'Docker',
   /* docker service configuration */
   docker: {
     host: process.env.IIOS_DOCKER_HOST || 'docker',

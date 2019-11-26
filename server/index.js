@@ -11,6 +11,9 @@ class Lambda extends Gateway {
   constructor(options) {
     super(options)
 
+    // manage long delay for reponse (ex: image build)
+    this._options.timeout = 86000000
+
     this._waitForServiceAPI(this._options.data.service).then(async dataService => {
       try {
         await dataService.addDatum('lambdafcts', {
@@ -61,30 +64,35 @@ class Lambda extends Gateway {
 
   // executes an user function providing its source code
   // ***************************************************************************
-  run(fctInfo) {
+  run(fct) {
     /* @_POST_ */
     return new Promise(async (resolve, reject) => {
-      let filepath
       try {
-        for (let dep of fctInfo.dependencies) {
-          global[dep.name] = await this._plugins.require(dep.name)
+        switch (this._options.orchestrator) {
+          case 'Docker Swarm':
+            break
+          case 'Kubernetes':
+            break
+          case 'Docker':
+          default:
+            let docker = await this. _waitForServiceAPI('docker')
+            docker.runService(fct.imageName, {
+              $userId: null,
+              $privileged: true
+            }).then(containerId => {
+              console.log(containerId)
+              fct.running = {
+                container: containerId,
+                status: 'running'
+              }
+
+              resolve(fct)
+            }).catch(err => {
+              reject(err)
+            })
         }
-
-        filepath = path.join(__dirname, './user', fctInfo.name + '.js')
-        fs.writeFileSync(filepath, fctInfo.code, 'utf8')
-        let fct = require(filepath)
-        // remove from file system
-        fs.unlinkSync(filepath)
-
-        // fct must be a Promise
-        fct(null, this).then(result => {
-          resolve(result)
-        }).catch(err => reject(err))
       } catch (err) {
-        if (fs.existsSync(filepath)) {
-          // remove from file system
-          fs.unlinkSync(filepath)
-        }
+        console.log(err)
         reject(err)
       }
     })
@@ -138,8 +146,8 @@ class Lambda extends Gateway {
         }
 
         // taking in account current configured registry
-        let imageName = this._options.docker.registry + '/' + fct.name +
-          (fct.version ? '@' + fct.version : '')
+        let imageName = this._options.docker.registry + '/' +
+          fct.name.toLowerCase() + (fct.version ? ':' + fct.version : '')
 
         let dockerfileTemplatePath = path.join(__dirname, './data', 'Dockerfile.template')
         let dockerfile = fs.readFileSync(dockerfileTemplatePath, 'utf8')
@@ -168,8 +176,6 @@ class Lambda extends Gateway {
         let archiveBuf = fs.readFileSync(archivePath)
         let url = 'http://' + this._options.server.host + ':' +
           this._options.server.port + '/build/' + filename
-
-        this._options.timeout = 86000000
 
         docker.buildFromRemote({
           remote: url,
@@ -208,6 +214,27 @@ class Lambda extends Gateway {
         this._pushEvent(this._options.name + ':build:error', '' + err)
         // instead of reject(err)
       }
+    })
+  }
+
+  // check if image is available
+  // ***************************************************************************
+  isImageAvailable(fct) {
+    /* @_GET_ */
+    return new Promise(async (resolve, reject) => {
+      let docker = await this. _waitForServiceAPI('docker')
+      // taking in account current configured registry
+      let imageName = this._options.docker.registry + '/' +
+        fct.name.toLowerCase() + (fct.version ? ':' + fct.version : '')
+
+      console.log(fct, imageName)
+
+      docker.isImageAvailable(imageName, {
+        $userId: null,
+        $privileged: true
+      }).then(() => {
+        resolve(imageName)
+      }).catch(err => reject(err))
     })
   }
 }

@@ -1,6 +1,17 @@
 version: '3.3'
 
 services:
+  redis-commander:
+    container_name: redis-commander
+    hostname: redis-commander
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    networks:
+      infra:
+
   iioat:
     image: ignitial/iioat:1.0.0
     container_name: iioat
@@ -58,9 +69,7 @@ services:
     image: ignitial/lambda:${SVC_VERSION}
     container_name: lambda
     volumes:
-      - ${PWD}/server:/opt/lambda/server
-      - ${PWD}/src:/opt/lambda/src
-      - ${PWD}/public:/opt/lambda/public
+      - ${PWD}:/opt/lambda
     ports:
       - ${IIOS_LAMBDA_EXPORTED_PORTS}
     environment:
