@@ -6,23 +6,10 @@ const os = require('os')
 const _ = require('lodash')
 const tar = require('tar')
 const rimraf = require('rimraf')
-const PluginManager = require('live-plugin-manager').PluginManager
 
 class Lambda extends Gateway {
   constructor(options) {
     super(options)
-
-    this._dependencies = []
-    this._depsPath = path.join(__dirname, this._options.dependencies.path)
-    this._plugins = new PluginManager()
-
-    try {
-      if (fs.existsSync(this._depsPath)) {
-        this._dependencies = JSON.parse(fs.readFileSync(this._depsPath, 'utf8'))
-      }
-    } catch (err) {
-      console.log('failed to load dependencies', err)
-    }
 
     this._waitForServiceAPI(this._options.data.service).then(async dataService => {
       try {

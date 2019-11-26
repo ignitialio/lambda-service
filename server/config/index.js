@@ -123,10 +123,6 @@ module.exports = {
     /* indicates that service is behind an HTTPS proxy */
     https: false,
   },
-  /* service related libraries */
-  dependencies: {
-    path: 'config/dependencies.json'
-  },
   /* options published through discovery mechanism */
   publicOptions: {
     /* declares component injection */
