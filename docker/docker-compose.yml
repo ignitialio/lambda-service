@@ -5,7 +5,7 @@ services:
     image: ignitial/lambda:${SVC_VERSION}
     container_name: lambda
     ports:
-      - ${IIOS_DOCKER_EXPORTED_PORTS}
+      - ${IIOS_LAMBDA_EXPORTED_PORTS}
     environment:
       - IIOS_REDIS_HOST=redis
       - IIOS_NAMESPACE=${IIOS_NAMESPACE}

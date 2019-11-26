@@ -10,7 +10,9 @@ export SVC_VERSION=$(cat package.json \
 echo "app version: ${SVC_VERSION}"
 
 export IIOS_SERVER_PORT=20199
-export IIOS_DOCKER_EXPORTED_PORTS=$IIOS_SERVER_PORT:$IIOS_SERVER_PORT
+export IIOS_LAMBDA_EXPORTED_PORTS=$IIOS_SERVER_PORT:$IIOS_SERVER_PORT
+export IIOS_DOCKER_SERVER_PORT=20513
+export IIOS_DOCKER_EXPORTED_PORTS=$IIOS_DOCKER_SERVER_PORT:$IIOS_DOCKER_SERVER_PORT
 
 export IIOS_SERVER_ACCESS_LOGS=false
 export IIOS_REST_LOGLEVEL=error
@@ -27,8 +29,8 @@ export IIOS_EMAILER_SMTP_PASS=toto
 
 if [ -z "$1" ]; then
   echo "stop svc only"
-  docker-compose -f docker/docker-compose-dev.yml stop lambda
-  docker-compose -f docker/docker-compose-dev.yml rm -f lambda
+  docker-compose -f docker/docker-compose-dev.yml stop lambda registry docker dind
+  docker-compose -f docker/docker-compose-dev.yml rm -f lambda registry docker dind
 else
   echo "stop full docker deploy"
   docker-compose -f docker/docker-compose-dev.yml stop

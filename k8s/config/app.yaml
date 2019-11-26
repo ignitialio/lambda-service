@@ -52,6 +52,11 @@ server:
   path: ./dist
   # indicates that service is behind an HTTPS proxy
   https: false
+# docker configuration
+docker:
+  host: docker
+  port: 20513
+  registry: registry.default.svc.cluster.local
 # options published through discovery mechanism
 publicOptions:
   # declares component injection

@@ -22,9 +22,13 @@ export SVC_VERSION=$(cat package.json \
 
 echo "app version: ${SVC_VERSION}"
 
+# export IIOS_SERVER_HOST=lambda
+# using local docker, so...
 export IIOS_SERVER_HOST=0.0.0.0
 export IIOS_SERVER_PORT=20399
-export IIOS_DOCKER_EXPORTED_PORTS=$IIOS_SERVER_PORT:$IIOS_SERVER_PORT
+export IIOS_LAMBDA_EXPORTED_PORTS=$IIOS_SERVER_PORT:$IIOS_SERVER_PORT
+export IIOS_DOCKER_SERVER_PORT=20513
+export IIOS_DOCKER_EXPORTED_PORTS=$IIOS_DOCKER_SERVER_PORT:$IIOS_DOCKER_SERVER_PORT
 
 export IIOS_SERVER_ACCESS_LOGS=false
 export IIOS_REST_LOGLEVEL=error
@@ -41,7 +45,7 @@ export IIOS_EMAILER_SMTP_PASS=toto
 
 if [ -z "$1" ]; then
   echo "start svc only"
-  docker-compose -f docker/docker-compose-dev.yml up -d lambda
+  docker-compose -f docker/docker-compose-dev.yml up -d lambda registry docker dind
 else
   echo "start full docker deploy"
   docker-compose -f docker/docker-compose-dev.yml up -d

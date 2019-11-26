@@ -122,9 +122,18 @@ class Lambda extends Gateway {
   build(fct) {
     /* @_POST_ */
     return new Promise(async (resolve, reject) => {
+      // fake answer to manage timeouts: response replaced with events
+      resolve({
+        _events: {
+          done: 'service:event:lambda:build:done',
+          err: 'service:event:lambda:build:error'
+        }
+      })
+
       try {
         let docker = await this. _waitForServiceAPI('docker')
-        let basepath = path.join(os.homedir(), 'lambda')
+        let staticPath = path.join(process.cwd(), this._options.server.path)
+        let basepath = path.join(staticPath, 'build')
 
         if (!fs.existsSync(basepath)) {
           fs.mkdirSync(basepath)
@@ -135,9 +144,15 @@ class Lambda extends Gateway {
         }
 
         if (!fct.archive) {
-          let filepath = path.join(basepath, 'src', fct.name + '.js')
+          let filepath = path.join(basepath, 'src', 'index.js')
           fs.writeFileSync(filepath, fct.code, 'utf8')
+        } else {
+
         }
+
+        // taking in account current configured registry
+        let imageName = this._options.docker.registry + '/' + fct.name +
+          (fct.version ? '@' + fct.version : '')
 
         let dockerfileTemplatePath = path.join(__dirname, './data', 'Dockerfile.template')
         let dockerfile = fs.readFileSync(dockerfileTemplatePath, 'utf8')
@@ -152,100 +167,60 @@ class Lambda extends Gateway {
         let dockerfilePath = path.join(basepath, 'src', 'Dockerfile')
         fs.writeFileSync(dockerfilePath, dockerfile, 'utf8')
 
-        let archivePath = path.join(basepath, fct.name + '.tar')
+        let filename = fct.name + '.tgz'
+        let archivePath = path.join(basepath, filename)
 
         let files = fs.readdirSync(path.join(basepath, 'src'))
 
-        // files = _.map(files, e => path.join(path.join(basepath, 'src'), e))
-
         await tar.c({
           C: path.join(path.join(basepath, 'src')),
-          /*gzip: true,*/
+          gzip: true,
           file: archivePath
         }, files)
 
         let archiveBuf = fs.readFileSync(archivePath)
-        // taking in account current registry managed by docker service
-        let imageName = await docker.buildFromRawDataArchive({
-          data: archiveBuf.toString('binary'),
-          name: fct.name,
-          folder: path.join(basepath, 'src')
+        let url = 'http://' + this._options.server.host + ':' +
+          this._options.server.port + '/build/' + filename
+
+        this._options.timeout = 86000000
+
+        docker.buildFromRemote({
+          remote: url,
+          t:  imageName
         }, {
           $userId: null,
           $privileged: true
-        })
-
-        // pushing to related registry
-        await docker.pushImageByName(imageName, {
-          $userId: null,
-          $privileged: true
-        })
-
-        rimraf.sync(basepath)
-
-        resolve(imageName)
-      } catch (err) {
-        reject(err)
-      }
-    })
-  }
-
-  // (private) install given dependency for a given runtime
-  // ***************************************************************************
-  _installDependency(runtime, libName, libVersion) {
-    console.log(runtime, libName, libVersion)
-    return new Promise(async (resolve, reject) => {
-      let found = _.find(this._dependencies,
-        e => e.name === libName && e.runtime === runtime && (libVersion ? libVersion === e.version : true))
-
-      if (!found && runtime.match(/Node/)) {
-        await this._plugins.install(libName, libVersion).then(() => {
+        }).then(result => {
           try {
-            this._dependencies.push({
-              name: libName,
-              version: libVersion,
-              runtime: runtime
-            })
-
-            fs.writeFileSync(this._depsPath, JSON.stringify(this._dependencies, null, 2))
-            resolve()
+            rimraf.sync(basepath + '/*')
           } catch (err) {
-            reject(err)
+            this._pushEvent(this._options.name + ':build:error', '' + err)
+            // instead of reject(err)
+            return
           }
+
+          // pushing to related registry
+          docker.pushImageByName(imageName, {
+            $userId: null,
+            $privileged: true
+          }).then(() => {
+            this._pushEvent(this._options.name + ':build:done', imageName)
+          }).catch(err => {
+            this._pushEvent(this._options.name + ':build:error', '' + err)
+            // instead of reject(err)
+            rimraf.sync(basepath + '/*')
+            console.log(err)
+          })
         }).catch(err => {
-          reject(err)
+          this._pushEvent(this._options.name + ':build:error', '' + err)
+          // instead of reject(err)
+          rimraf.sync(basepath + '/*')
+          console.log(err)
         })
-      } else if (found) {
-        resolve()
-      } else {
-        reject('runtime mismatch')
-      }
-    })
-  }
-
-  // install dependency for a function
-  // ***************************************************************************
-  installDependencies(fct) {
-    /* @_POST_ */
-    return new Promise(async (resolve, reject) => {
-      try {
-        for (let dep of fct.dependencies) {
-          await this._installDependency(fct.runtime, dep.name, dep.version)
-        }
-
-        resolve(this._dependencies)
       } catch (err) {
-        reject(err)
+        this._pushEvent(this._options.name + ':build:error', '' + err)
+        // instead of reject(err)
       }
-    })
-  }
-
-  // get installed dependencies
-  // ***************************************************************************
-  installedDependencies() {
-    /* @_GET_ */
-    return new Promise(async (resolve, reject) => {
-      resolve(this._dependencies)
     })
   }
 }

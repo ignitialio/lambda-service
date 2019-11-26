@@ -10,7 +10,6 @@
       style="max-width: 200px;"
       :items="runtimes" v-model="fct.runtime"></v-select>
 
-
     <div class="fct-section">
       {{ $t('Docker image') }}
       <v-btn color="blue darken-1" icon text
@@ -20,24 +19,10 @@
     </div>
 
     <div v-if="fct.imageName">{{ fct.imageName }}</div>
+    <div v-else-if="building" style="text-align: center;">
+      <v-progress-circular color="blue lighten-1" indeterminate></v-progress-circular>
+    </div>
     <div v-else>{{ $t('No associated image available') }}</div>
-
-    <div class="fct-section">
-      {{ $t('Dependencies') }}
-      <v-btn color="blue darken-1" icon text
-        @click="handleApplyDeps" :disabled="!hasDeps(fct)" dark>
-        <v-icon>play_for_work</v-icon>
-      </v-btn>
-    </div>
-
-    <div class="fct-dependencies">
-      <div class="fct-lib" v-for="dep of fct.dependencies" :key="dep.name">
-        <span style="margin-right: 32px;">
-          {{ dep.name + ( dep.version ? '@' + dep.version : '') }}</span>
-        <v-icon class="fct-lib--status" v-show="!isInstalled(dep.name)" color="grey">error</v-icon>
-        <v-icon class="fct-lib--status" v-show="isInstalled(dep.name)" color="green lighten-1">done</v-icon>
-      </div>
-    </div>
 
     <div class="fct-section">{{ $t('Source code') }}*</div>
 
@@ -46,13 +31,13 @@
 
     <div class="fct-section">
       {{ $t('Test') }}
-      <v-btn color="blue darken-1" icon text
+      <v-btn color="blue darken-1" icon text :disabled="!fct.imageName"
         @click="handleRun" :disable="running" dark>
         <v-icon>play_arrow</v-icon>
       </v-btn>
     </div>
 
-    <v-textarea style="margin-top: 16px"
+    <v-textarea style="margin-top: 16px" :disabled="!fct.imageName"
       :label="$t('Result')" :value="result"
       readonly outlined rows="6"></v-textarea>
   </div>
@@ -84,6 +69,7 @@ export default {
   watch: {
     data: {
       handler: function(val) {
+        this.building = false
         if (JSON.stringify(val) !== JSON.stringify(this.fct)) {
           this.fct = cloneDeep(val)
         }
@@ -167,19 +153,24 @@ export default {
       this.building = true
 
       this.$services.lambda.build(this.fct).then(() => {
-        this.building = false
+        let onDone = imageName => {
+          console.log('image ' + imageName + 'built')
+          this.building = false
+          this.$ws.socket.off('service:event:lambda:build:error', onError)
+          this.fct.imageName = imageName
+        }
+
+        let onError = err => {
+          console.log('image build ERROR', err)
+          this.building = false
+          this.$ws.socket.off('service:event:lambda:build:done', onDone)
+        }
+
+        this.$ws.socket.once('service:event:lambda:build:done', onDone)
+        this.$ws.socket.once('service:event:lambda:build:error', onError)
       }).catch(err => {
         this.$services.emit('app:notification', this.$t('Failed to build image'))
         this.building = false
-        console.log(err)
-      })
-    },
-    handleApplyDeps() {
-      this.$services.lambda.installDependencies(this.fct).then(result => {
-        this._installedDeps = result
-        this.$forceUpdate()
-      }).catch(err => {
-        this.$services.emit('app:notification', this.$t('Failed to install dependencies'))
         console.log(err)
       })
     },
@@ -216,27 +207,9 @@ export default {
       }
 
       this.$emit('update:data', this.fct)
-    },
-    isInstalled(depName) {
-      let found
-      for (let dep of this._installedDeps) {
-        if (dep.name === depName) return true
-      }
-
-      return false
-    },
-    hasDeps(fct) {
-      if (fct.dependencies && fct.dependencies.length) {
-        return true
-      }
-      return false
     }
   },
   mounted() {
-    this.$services.lambda.installedDependencies().then(result => {
-      this._installedDeps = result
-    }).catch(err => console.log(err))
-
     this._listeners = {
       onSave: this.handleSave.bind(this),
       onNew: this.handleNew.bind(this)
@@ -293,28 +266,5 @@ export default {
   font-weight: bold;
   display: flex;
   align-items: center;
-}
-
-.fct-dependencies {
-  display: flex;
-  flex-wrap: wrap;
-  min-height: 48px;
-  align-items: flex-start;
-  justify-content: flex-start;
-}
-
-.fct-lib {
-  background-color: navajowhite;
-  border-radius: 12px;
-  height: 24px;
-  padding: 0 12px;
-  margin: 0 4px;
-  position: relative;
-}
-
-.fct-lib--status {
-  position: absolute;
-  right: 0;
-  top: 0;
 }
 </style>

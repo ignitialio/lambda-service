@@ -106,6 +106,12 @@ module.exports = {
       }
     }
   },
+  /* docker service configuration */
+  docker: {
+    host: process.env.IIOS_DOCKER_HOST || 'docker',
+    port: process.env.IIOS_DOCKER_PORT || 20513,
+    registry: process.env.IIOS_DOCKER_REGISTRY || 'registry'
+  },
   /* HTTP server declaration */
   server: {
     /* server host */

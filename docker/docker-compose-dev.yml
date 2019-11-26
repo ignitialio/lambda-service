@@ -6,6 +6,8 @@ services:
     container_name: iioat
     ports:
       - "8080:8080"
+    volumes:
+      - /home/${USER}/Documents/Projects/iio/templates/app-material-template:/opt/iioat
     environment:
       - NODE_ENV=production
       - IIOS_SERVER_PORT=8080
@@ -56,14 +58,52 @@ services:
     image: ignitial/lambda:${SVC_VERSION}
     container_name: lambda
     volumes:
-      - ${PWD}:/opt/lambda
+      - ${PWD}/server:/opt/lambda/server
+      - ${PWD}/src:/opt/lambda/src
+      - ${PWD}/public:/opt/lambda/public
     ports:
-      - ${IIOS_DOCKER_EXPORTED_PORTS}
+      - ${IIOS_LAMBDA_EXPORTED_PORTS}
     environment:
+      - IIOS_DOCKER_REGISTRY=localhost:5001
       - IIOS_REDIS_HOST=redis
       - IIOS_NAMESPACE=${IIOS_NAMESPACE}
       - IIOS_SERVER_HOST=${IIOS_SERVER_HOST}
       - IIOS_SERVER_PORT=${IIOS_SERVER_PORT}
+    networks:
+      infra:
+
+  # registry:
+  #   image: registry:2
+  #   container_name: registry
+  #   ports:
+  #     - "5000:5000"
+  #   networks:
+  #     infra:
+  #
+  # dind:
+  #   image: docker:dind
+  #   privileged: true
+  #   container_name: dind
+  #   environment:
+  #     - DOCKER_TLS_CERTDIR=
+  #   networks:
+  #     infra:
+
+  docker:
+    image: ignitial/docker:${SVC_VERSION}
+    container_name: docker
+    ports:
+      - ${IIOS_DOCKER_EXPORTED_PORTS}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/${USER}/Documents/Projects/iio/services/docker:/opt/docker
+    environment:
+      # force host docker use
+      - IIOS_DOCKER_SOCKET_PATH=/var/run/docker.sock
+      - IIOS_REDIS_HOST=redis
+      - IIOS_NAMESPACE=${IIOS_NAMESPACE}
+      - IIOS_SERVER_HOST=docker
+      - IIOS_SERVER_PORT=${IIOS_DOCKER_SERVER_PORT}
     networks:
       infra:
 
