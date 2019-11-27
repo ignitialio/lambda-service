@@ -4,11 +4,16 @@
       <v-progress-linear v-if="loading"
         indeterminate class="lambda-progress-bar"></v-progress-linear>
 
+      <div class="lambda-search">
+        <v-text-field v-model="search" solo append-icon="search" clearable
+          :label="$t('Search')"></v-text-field>
+      </div>
+
       <v-list>
         <v-list-item v-for="fct in fcts" :key="fct.name"
           @click="handleSelected(fct)"
           class="lambda-item"
-          :class="{ 'selected': selected === fct }">
+          :class="{ 'selected': selected && ('' + selected._id === '' + fct._id) }">
 
           <v-list-item-content>
             <v-list-item-title v-text="fct.name"></v-list-item-title>
@@ -24,11 +29,12 @@
       </v-list>
     </div>
 
-    <fct class="lambda-right" :data="selected"></fct>
+    <fct v-if="selected" class="lambda-right" :data="selected"></fct>
   </div>
 </template>
 
 <script>
+import filter from 'lodash/filter'
 import Fct from './Fct.vue'
 
 export default {
@@ -39,7 +45,13 @@ export default {
       fcts: [],
       hidden: false,
       loading: false,
-      selected: {}
+      selected: null,
+      search: ''
+    }
+  },
+  watch: {
+    search: function(val) {
+      this.update()
     }
   },
   components: {
@@ -50,7 +62,12 @@ export default {
       this.loading = true
       this.$db.collection('lambdafcts').then(lambdafcts => {
         lambdafcts.dFind({}).then(docs => {
-          this.fcts = docs
+          if (this.search !== '' && this.search.length > 2) {
+            this.fcts =
+              filter(docs, e => (e.name + ' ' + e.description).match(this.search))
+          } else {
+            this.fcts = docs
+          }
           this.loading = false
         }).catch(err => {
           console.log(err)
@@ -62,11 +79,23 @@ export default {
       })
     },
     handleCollectionUpdate(event) {
-      console.log(event)
+      console.log('event', event)
       this.update()
     },
     handleSelected(fct) {
-      this.selected = fct
+      this.$db.collection('lambdafcts').then(lambdafcts => {
+        lambdafcts.dGet({ _id: fct._id }).then(doc => {
+          this.selected = doc
+          this.$forceUpdate()
+          console.log('selected', $j(doc))
+        }).catch(err => {
+          console.log(err)
+          this.selected = null
+        })
+      }).catch(err => {
+        console.log(err)
+        this.selected = null
+      })
     },
     handleDelete(fct) {
       this.$db.collection('lambdafcts').then(lambdafcts => {
@@ -123,19 +152,26 @@ export default {
 
 .lambda-left {
   position: relative;
-  width: calc(33% - 16px);
-  margin: 0 8px;
+  min-width: 250px;
+  width: 360px;
+  max-width: calc(33% - 16px);
   border-right: 1px solid gainsboro;
   overflow-y: auto;
 }
 
 .lambda-right {
-  width: calc(67% - 16px);
+  flex: 1;
   height: calc(100% - 0px);
   padding: 8px;
 }
 
 .lambda-item.selected {
   background-color: rgba(30, 144, 255, 0.2);
+}
+
+.lambda-search {
+  padding: 24px 8px 0px 8px;
+  background-color: rgba(30, 144, 255, 0.2);
+  display: flex;
 }
 </style>

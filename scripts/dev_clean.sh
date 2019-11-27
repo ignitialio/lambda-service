@@ -29,8 +29,8 @@ export IIOS_EMAILER_SMTP_PASS=toto
 
 if [ -z "$1" ]; then
   echo "stop svc only"
-  docker-compose -f docker/docker-compose-dev.yml stop lambda registry docker dind
-  docker-compose -f docker/docker-compose-dev.yml rm -f lambda registry docker dind
+  docker-compose -f docker/docker-compose-dev.yml stop dlake auth lambda docker iioat
+  docker-compose -f docker/docker-compose-dev.yml rm -f dlake auth lambda docker iioat
 else
   echo "stop full docker deploy"
   docker-compose -f docker/docker-compose-dev.yml stop

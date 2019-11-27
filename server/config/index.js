@@ -167,7 +167,22 @@ module.exports = {
           'Image docker'
         ],
         'Failed to run function': [
-          'Échec de l\'exécution de l\'image'
+          'Échec de l\'exécution de la fonction'
+        ],
+        'Execution status': [
+          'État de l\'exécution'
+        ],
+        'Status': [
+          'État'
+        ],
+        'No associated container': [
+          'Pas de conteneur associé'
+        ],
+        'Failed to activate function': [
+          'Échec de l\'activation de la fonction'
+        ],
+        'Failed to clean function': [
+          'Échec du nettoyage de la fonction'
         ]
       },
       /* eventually any other data */

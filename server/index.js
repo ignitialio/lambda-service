@@ -62,16 +62,16 @@ class Lambda extends Gateway {
     })
   }
 
-  // executes an user function providing its source code
+  // starts related container for an user function
   // ***************************************************************************
-  run(fct) {
+  activate(fct) {
     /* @_POST_ */
     return new Promise(async (resolve, reject) => {
       // fake answer to manage timeouts: response replaced with events
       resolve({
         _events: {
-          done: 'service:event:lambda:run:done',
-          err: 'service:event:lambda:run:error'
+          done: 'service:event:lambda:activate:done',
+          err: 'service:event:lambda:activate:error'
         }
       })
 
@@ -102,51 +102,135 @@ class Lambda extends Gateway {
               $userId: null,
               $privileged: true
             }).then(async containerId => {
-              fct.running = {
+              fct.execution = {
                 container: containerId,
-                status: 'started'
+                status: 'activated'
               }
 
-              let fctService = await this._waitForServiceAPI(fct.name.toLowerCase(), 10000)
-              fctService.fct({
-                $userId: null,
-                $privileged: true
-              }).then(async result => {
-                fct.running = {
-                  container: containerId,
-                  status: 'ended'
-                }
-
-                await docker.stopContainer(containerId, true, {
-                  $userId: null,
-                  $privileged: true
-                }) // remove as well
-
-                fct.running = null
-
-                this._pushEvent(this._options.name + ':run:done', {
-                  result: result,
-                  fct: fct
-                })
-              }).catch(async err => {
-                await docker.stopContainer(containerId, true, {
-                  $userId: null,
-                  $privileged: true
-                }) // remove as well
-
-                fct.running = null
-
-                console.log(err)
-                this._pushEvent(this._options.name + ':run:error', '' + err)
-              })
+              // use bson encoder
+              this._pushEvent(this._options.name + ':activate:done', fct)
             }).catch(err => {
+              fct.execution.status = 'error'
+              fct.execution.error = '' + err
+
+              // use bson encoder
+              this._pushEvent(this._options.name + ':activate:error', fct)
               console.log(err)
-              this._pushEvent(this._options.name + ':run:error', '' + err)
             })
         }
       } catch (err) {
+        fct.execution.status = 'error'
+        fct.execution.error = '' + err
+
+        // use bson encoder
+        this._pushEvent(this._options.name + ':activate:error', fct)
         console.log(err)
-        this._pushEvent(this._options.name + ':run:error', '' + err)
+      }
+    })
+  }
+
+  // executes an user function from its associated container
+  // ***************************************************************************
+  run(fct) {
+    /* @_POST_ */
+    return new Promise(async (resolve, reject) => {
+      // fake answer to manage timeouts: response replaced with events
+      resolve({
+        _events: {
+          done: 'service:event:lambda:run:done',
+          status: 'service:event:lambda:run:status',
+          err: 'service:event:lambda:run:error'
+        }
+      })
+
+      try {
+        switch (this._options.orchestrator) {
+          case 'Docker Swarm':
+            break
+          case 'Kubernetes':
+            break
+          case 'Docker':
+          default:
+            let fctService = await this._waitForServiceAPI(fct.name.toLowerCase(), 10000)
+
+            fct.execution.status = 'running'
+
+            // use bson encoder
+            this._pushEvent(this._options.name + ':run:status', fct)
+
+            fctService.fct({
+              $userId: null,
+              $privileged: true
+            }).then(async result => {
+              fct.execution.status = 'stopped'
+
+              // use bson encoder
+              this._pushEvent(this._options.name + ':run:done', {
+                result: result,
+                fct: fct
+              })
+            }).catch(async err => {
+              fct.execution.status = 'error'
+              fct.execution.error = '' + err
+
+              // use bson encoder
+              this._pushEvent(this._options.name + ':run:error', fct)
+
+              console.log(err)
+            })
+        }
+      } catch (err) {
+        fct.execution.status = 'error'
+        fct.execution.error = '' + err
+
+        // use bson encoder
+        this._pushEvent(this._options.name + ':run:error', fct)
+        console.log(err)
+      }
+    })
+  }
+
+  // clean user function removing associated container
+  // ***************************************************************************
+  clean(fct) {
+    /* @_POST_ */
+    return new Promise(async (resolve, reject) => {
+      // fake answer to manage timeouts: response replaced with events
+      resolve({
+        _events: {
+          done: 'service:event:lambda:clean:done',
+          err: 'service:event:lambda:clean:error'
+        }
+      })
+
+      try {
+        switch (this._options.orchestrator) {
+          case 'Docker Swarm':
+            break
+          case 'Kubernetes':
+            break
+          case 'Docker':
+          default:
+            let docker = await this. _waitForServiceAPI('docker')
+
+            await docker.stopContainer(fct.execution.container, true, {
+              $userId: null,
+              $privileged: true
+            }) // remove as well
+
+            fct.execution.container = null
+            fct.execution.status = 'built'
+
+            // use bson encoder
+            this._pushEvent(this._options.name + ':clean:done', fct)
+        }
+      } catch (err) {
+        fct.execution.status = 'error'
+        fct.execution.error = '' + err
+
+        // use bson encoder
+        this._pushEvent(this._options.name + ':clean:error', fct)
+        console.log(err)
       }
     })
   }
@@ -241,7 +325,15 @@ class Lambda extends Gateway {
           try {
             rimraf.sync(basepath + '/*')
           } catch (err) {
-            this._pushEvent(this._options.name + ':build:error', '' + err)
+
+            // use bson encoder
+            fct.execution = {
+              container: null,
+              status: 'error',
+              error: '' + err
+            }
+
+            this._pushEvent(this._options.name + ':build:error', fct)
             // instead of reject(err)
             return
           }
@@ -251,21 +343,51 @@ class Lambda extends Gateway {
             $userId: null,
             $privileged: true
           }).then(() => {
-            this._pushEvent(this._options.name + ':build:done', imageName)
+            fct.imageName = imageName
+            fct.execution = {
+              container: null,
+              status: 'built'
+            }
+
+            // use bson encoder
+            this._pushEvent(this._options.name + ':build:done', fct)
           }).catch(err => {
-            this._pushEvent(this._options.name + ':build:error', '' + err)
+            fct.execution = {
+              container: null,
+              status: 'error',
+              error: '' + err
+            }
+
+            // use bson encoder
+            this._pushEvent(this._options.name + ':build:error', fct)
             // instead of reject(err)
+
             rimraf.sync(basepath + '/*')
             console.log(err)
           })
         }).catch(err => {
-          this._pushEvent(this._options.name + ':build:error', '' + err)
+          fct.execution = {
+            container: null,
+            status: 'error',
+            error: '' + err
+          }
+
+          // use bson encoder
+          this._pushEvent(this._options.name + ':build:error', fct)
+
           // instead of reject(err)
           rimraf.sync(basepath + '/*')
           console.log(err)
         })
       } catch (err) {
-        this._pushEvent(this._options.name + ':build:error', '' + err)
+        fct.execution = {
+          container: null,
+          status: 'error',
+          error: '' + err
+        }
+
+        // use bson encoder
+        this._pushEvent(this._options.name + ':build:error', fct)
         // instead of reject(err)
       }
     })
