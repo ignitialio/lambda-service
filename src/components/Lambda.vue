@@ -21,9 +21,8 @@
           </v-list-item-content>
 
           <v-list-item-action>
-            <v-btn icon @click.stop="handleDelete(fct)">
-              <v-icon color='red darken-1'>clear</v-icon>
-            </v-btn>
+            <ig-btn-confirm class="lambda-btn--error"
+              small text icon="clear" @click="handleDelete(fct)"></ig-btn-confirm>
           </v-list-item-action>
         </v-list-item>
       </v-list>
@@ -169,9 +168,15 @@ export default {
   background-color: rgba(30, 144, 255, 0.2);
 }
 
+.lambda-btn--error {
+  width: 24px;
+  height: 24px;
+  color: tomato;
+}
+
 .lambda-search {
   padding: 24px 8px 0px 8px;
-  background-color: rgba(30, 144, 255, 0.2);
+  background-color: rgba(30, 144, 255, 0.05);
   display: flex;
 }
 </style>
