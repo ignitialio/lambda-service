@@ -51,7 +51,7 @@
     "k8s:remove": "k8s/k8s-remove.sh"
   },
   "dependencies": {
-    "@ignitial/iio-services": "^2.2.13",
+    "@ignitial/iio-services": "^2.3.0",
     "lodash": "^4.17.15",
     "rimraf": "^3.0.0",
     "tar": "^5.0.5",
