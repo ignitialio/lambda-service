@@ -135,15 +135,9 @@ module.exports = {
       icon: 'assets/lambda-64.png',
       /* Internationalization: see Ignitial.io Web App */
       i18n: {
-        'My amazing component': [ 'Mon super composant' ],
-        'Provides uber crazy services':  [
-          'Fournit des services super hyper dingues'
-        ],
-        'Insert here your own UI components': [
-          'Insérer ici vos propres composants'
-        ],
-        'Lambda Service view': [
-          'Vue du service Lambda'
+        'Serverless functions': [ 'Fonctions serverless' ],
+        'AWS Lambda like function call':  [
+          'Fonctions type AWS Lambda'
         ],
         'Source code': [
           'Code source'
@@ -186,8 +180,8 @@ module.exports = {
         ]
       },
       /* eventually any other data */
-      title: 'My amazing component',
-      info: 'Provides uber crazy services'
+      title: 'Serverless functions',
+      info: 'AWS Lambda like function call'
     },
     /* domain related public options: could be any JSON object*/
     myPublicOption: {

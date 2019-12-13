@@ -15,7 +15,7 @@ global.iios_lambda = function(Vue) {
     Vue.prototype.$services.emit('app:menu:add', [
       {
         path: '/service-lambda',
-        title: 'Lambda Service view',
+        title: 'Serverless functions',
         svgIcon: '$$service(lambda)/assets/lambda.svg',
         section: 'Services',
         anonymousAccess: true,
