@@ -164,13 +164,13 @@ export default {
   methods: {
     handleNew() {
       this.$services.lambda.template().then(code => {
-        this.codeTempalte = code
+        this.codeTemplate = code
 
         this.fct = {
           name: 'lambda_fct_' + Math.random().toString(36).slice(2),
           description: '',
           runtime: 'NodeJS 12',
-          code: this.codeTempalte,
+          code: this.codeTemplate,
           archive: null,
           dependencies: []
         }

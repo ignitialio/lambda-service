@@ -57,6 +57,18 @@ export default {
     fct: Fct
   },
   methods: {
+    initialize() {
+      this.$services.lambda.template().then(code => {
+        this.selected = {
+          name: 'lambda_fct_' + Math.random().toString(36).slice(2),
+          description: '',
+          runtime: 'NodeJS 12',
+          code: code,
+          archive: null,
+          dependencies: []
+        }
+      }).catch(err => console.log(err))
+    },
     update() {
       this.loading = true
       this.$db.collection('lambdafcts').then(lambdafcts => {
@@ -128,8 +140,10 @@ export default {
     this.$ws.socket.on('service:event:dlake:lambdafcts:delete', this._listeners.onCollectionUpdate)
 
     this.update()
+    this.initialize()
   },
   beforeDestroy() {
+
     this.$ws.socket.off('service:event:dlake:lambdafcts:add', this._listeners.onCollectionUpdate)
     this.$ws.socket.off('service:event:dlake:lambdafcts:update', this._listeners.onCollectionUpdate)
     this.$ws.socket.off('service:event:dlake:lambdafcts:delete', this._listeners.onCollectionUpdate)
@@ -154,6 +168,7 @@ export default {
   min-width: 250px;
   width: 360px;
   max-width: calc(33% - 16px);
+  height: calc(100% - 0px);
   border-right: 1px solid gainsboro;
   overflow-y: auto;
 }
